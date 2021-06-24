@@ -1,0 +1,64 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Tesy : MonoBehaviour
+{
+    public Vector3 start;
+    public Vector3 target;
+    private Vector3 newTarget;
+    public float speed;
+    public bool PlayerActivated;
+    public bool PAmove;
+
+    private void Start()
+    {
+        newTarget = target;
+    }
+    void Update()
+    {
+        Vector3 pos = transform.position;
+        if (pos != target)
+        {
+            if (!PlayerActivated || PAmove)
+            {
+                transform.position = Vector3.MoveTowards(pos, target, speed);
+            }
+            
+        }
+        else
+        {
+
+            target = start;
+            if (pos == start)
+            {
+                PAmove = false;
+                target = newTarget;
+            }
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (PlayerActivated)
+        {
+            if (collision.gameObject.CompareTag("Player"))
+            {
+                PAmove = true;
+                Debug.Log("woo");
+            }
+        }
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (PlayerActivated)
+        {
+            if (collision.gameObject.CompareTag("Player"))
+            {
+                PAmove = true;
+                Debug.Log("woo");
+            }
+        }
+    }
+}
