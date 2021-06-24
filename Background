@@ -1,0 +1,40 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Bookgrongncamera : MonoBehaviour
+{
+    public Transform player;
+    public Transform newPlayer;
+    public bool Thisisthecamera;
+    public float startOfLevel;
+    public float endOfLevel;
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        transform.position = new Vector3(transform.position.x, player.position.y, transform.position.z);
+
+        
+            if (transform.position.y < startOfLevel)
+            {
+                transform.position = new Vector3(transform.position.x, startOfLevel, transform.position.z);
+            }
+            if (transform.position.y > endOfLevel)
+            {
+                transform.position = new Vector3(transform.position.x, endOfLevel, transform.position.z);
+            }
+        
+    }
+
+    public void NewFollow(Transform player_)
+    {
+        player = player_;
+    }
+}
