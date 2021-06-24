@@ -1,0 +1,336 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class PlayerController : MonoBehaviour
+{
+
+    [Header("Movement and Jumping")]
+    public float speed = 10f;
+    public float JumpHeight = 9f;
+    private int JumpAmount = 2;
+    private Rigidbody2D rb;
+    public Vector2 movement = new Vector2();
+    bool IsFacingRight;
+
+    [Header("Ice slide")]
+    public float PushForce;
+    private bool OnIce;
+
+    [Header("Death")]
+    public Transform Checkpoint;
+    public Transform Cocoon;
+    public GameObject soul;
+    private Projectiles projectile;
+
+    [Header("Animation parameters")]
+    private Animator anim;
+    private bool OnGround;
+
+    [Header("Dashing")]
+    public float dashSpeed;
+    public float startDashTime;
+    private float dashTime;
+    private int direction;
+    bool dashing;
+    public bool spring;
+    public bool StartTimer;
+    public float Countdown;
+    bool canDash;
+
+    [Header("Wall jump")]
+    public LayerMask groundLayer;
+    private float wallJumpTime = 0.1f;
+    public float wallSlideSpeed;
+    public float wallDistance; //distance from the wall the player needs to be in order to slide / jump
+    bool isWallSliding = false;
+    RaycastHit2D WallCheckHit;
+    float jumpTime;
+    public bool pressingKey;
+
+    [Header("Other")]
+    private Transform playerTransform;
+    public Bookgrongncamera Background;
+    public Bookgrongncamera Camera;
+    public float newSpeed;
+    public bool oof;
+
+
+
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        anim = GetComponent<Animator>();
+        Checkpoint = Cocoon;
+        dashTime = startDashTime;
+
+        playerTransform = this.transform;
+        Background = GameObject.Find("Dawn sky purple").GetComponent<Bookgrongncamera>();
+        Camera = GameObject.Find("Main Camera").GetComponent<Bookgrongncamera>();
+        Background.NewFollow(playerTransform);
+        Camera.NewFollow(playerTransform);
+
+    }
+
+    void Update()
+    {
+        move();
+        flipChar();
+        jump();
+        Dash();
+        WallJumping();
+
+        anim.SetBool("OnGround", OnGround);
+
+        if (StartTimer == true)
+        {
+            if (Countdown <= 0)
+            {
+                StartTimer = false;
+                Countdown = 0.5f;
+            }
+            Countdown -= Time.deltaTime;
+
+        }
+
+
+    }
+
+    private void OnCollisionEnter2D(Collision2D other)
+    {
+       
+
+        if (other.gameObject.CompareTag("Ground"))
+        {
+            OnGround = true;
+            canDash = true;
+            JumpAmount = 2;
+        }
+        if (other.gameObject.CompareTag("MovingObject"))
+        {
+            this.transform.parent = other.transform;
+            canDash = true;
+            OnGround = true;
+            JumpAmount = 2;
+        }
+        if (other.gameObject.CompareTag("Ice"))
+        {
+            canDash = true;
+            OnIce = true;
+            OnGround = true;
+            JumpAmount = 2;
+        }
+        if (other.gameObject.CompareTag("Enemy"))
+        {
+            StartCoroutine(SpawnSoul());
+        }
+        if (other.gameObject.CompareTag("Walls"))
+        {
+            canDash = true;
+            JumpAmount += 1;
+        }
+    }
+        
+    IEnumerator SpawnSoul()
+    {
+        Debug.Log("SpawnSoul");
+        GameObject Soul = (GameObject)Instantiate(soul, this.transform.position, this.transform.rotation);
+        Soul.GetComponent<Projectiles>().ChaseEnemy(Checkpoint);
+        Destroy(gameObject);
+        yield break;
+    }
+
+    private void OnCollisionExit2D(Collision2D other)
+    {
+        if (other.gameObject.CompareTag("MovingObject"))
+        {
+            this.transform.parent = null;
+            OnGround = false;
+        }
+        if (other.gameObject.CompareTag("Ice"))
+        {
+            OnIce = false;
+            OnGround = false;
+        }
+        if (other.gameObject.CompareTag("Ground"))
+        {
+            OnGround = false;
+        }
+    }
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.gameObject.CompareTag("Checkpoint"))
+        {
+            Debug.Log(other.gameObject);
+            Checkpoint = other.transform;
+            Cocoon = Checkpoint;
+            oof = true;
+        }
+        if (other.gameObject.CompareTag("Enemy"))
+        {
+            StartCoroutine(SpawnSoul());
+        }
+    }
+    private void move()
+    {
+        float moveHorizonal = Input.GetAxis("Horizontal"); 
+        anim.SetFloat("horizontalSpeed", Mathf.Abs(moveHorizonal));
+        
+
+    }
+    private void FixedUpdate()
+    {
+        if (!StartTimer)
+        {
+            if (Input.GetKey(KeyCode.A)) 
+            {
+                rb.velocity = new Vector2(-speed, rb.velocity.y);
+                pressingKey = true;
+            }
+            else if (Input.GetKey(KeyCode.D))
+            {
+                rb.velocity = new Vector2(speed, rb.velocity.y);
+                pressingKey = true;
+            }
+            else if (OnGround && !dashing && !OnIce)
+            {
+                rb.velocity = Vector3.zero;
+            }
+            else
+            {
+                pressingKey = false;
+            }
+        }
+        
+
+
+    }
+
+    private void jump()
+    {
+        if (Input.GetKeyDown(KeyCode.Space) && JumpAmount > 0) 
+        {
+            rb.velocity = new Vector2(rb.velocity.x, 10f); 
+            OnGround = false;
+            JumpAmount -= 1;
+        }
+    }
+    private void flipChar()
+    {
+        if (Input.GetKeyDown(KeyCode.A)) 
+        {
+            transform.localScale = new Vector2(1, 1);
+
+            if (OnIce)
+            {
+                rb.velocity = new Vector2(-PushForce, rb.velocity.y);
+            }
+            IsFacingRight = false;
+
+        }
+        else if (Input.GetKeyDown(KeyCode.D))
+        {
+            transform.localScale = new Vector2(-1, 1);
+
+            if (OnIce)
+            {
+                rb.velocity = new Vector2(PushForce, rb.velocity.y);
+            }
+            IsFacingRight = true;
+
+        }
+
+    }
+
+    private void Dash()
+    {
+        if (!spring)
+        {
+            if (direction == 0)
+            {
+                if (Input.GetKeyDown(KeyCode.F))
+                {
+                    if (IsFacingRight)
+                    {
+                        direction = 2;
+                        dashing = true;
+                    }
+                    else
+                    {
+                        direction = 1;
+                        dashing = true;
+                    }
+
+                }
+
+            }
+            if (dashing)
+            {
+
+                if (dashTime <= 0)
+                {
+                    direction = 0;
+                    dashTime = startDashTime;
+                    dashing = false;
+                    Debug.Log("uh");
+                }
+                else
+                {
+                    dashTime -= Time.deltaTime;
+                    Debug.Log("dhuhs");
+                    dashing = true;
+                    StartTimer = true;
+                    if (direction == 1)
+                    {
+                        rb.velocity = Vector2.left * dashSpeed;
+                        Debug.Log("Dashing");
+                    }
+                    if (direction == 2)
+                    {
+                        rb.velocity = Vector2.right * dashSpeed;
+                    }
+                }
+            }
+
+        }
+
+    }
+
+    public void GetCheckpoint(Transform target)
+    {
+        Checkpoint = target;
+        Cocoon = Checkpoint;
+    }
+
+    private void WallJumping()
+    {
+        if (IsFacingRight)
+        {
+            WallCheckHit = Physics2D.Raycast(transform.position, new Vector2(wallDistance, 0), wallDistance, groundLayer);
+        }
+        else
+        {
+            WallCheckHit = Physics2D.Raycast(transform.position, new Vector2(-wallDistance, 0), wallDistance, groundLayer);
+        }
+
+        if (WallCheckHit && !OnGround && pressingKey == true)
+        {
+            isWallSliding = true;
+            jumpTime = Time.time + wallJumpTime;
+        }
+        else if (jumpTime < Time.time)
+        {
+            isWallSliding = false;
+
+        }
+
+        if (isWallSliding)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, wallSlideSpeed, float.MaxValue));
+        }
+
+    }
+
+
+}
